@@ -1,5 +1,6 @@
 from rembg import remove, new_session
 from PIL import Image
+from typing import Optional, Tuple
 
 from cog import BasePredictor, Input, Path
 
@@ -35,11 +36,73 @@ class Predictor(BasePredictor):
                 "ben_custom"
             ],
             default="birefnet-general"
+          ),
+          alpha_matting: bool = Input(
+            description="Use alpha matting for smoother edges",
+            default=False
+          ),
+          alpha_matting_foreground_threshold: int = Input(
+            description="Foreground threshold for alpha matting",
+            default=240,
+            ge=0,
+            le=255
+          ),
+          alpha_matting_background_threshold: int = Input(
+            description="Background threshold for alpha matting",
+            default=10,
+            ge=0,
+            le=255
+          ),
+          alpha_matting_erode_size: int = Input(
+            description="Erosion size for alpha matting",
+            default=10,
+            ge=0
+          ),
+          only_mask: bool = Input(
+            description="Return only the binary mask instead of the cutout",
+            default=False
+          ),
+          post_process_mask: bool = Input(
+            description="Apply post-processing to smooth mask boundaries",
+            default=False
+          ),
+          bgcolor: Optional[str] = Input(
+            description="Background color as hex string or leave empty for transparent",
+            default=None
           )
     ) -> Path:
         image = Image.open(str(image))
         session = new_session(model)
-        output = remove(image, session=session)
+
+        # Convert hex color string to RGBA tuple if provided
+        bgcolor_tuple = None
+        if bgcolor is not None:
+            # Remove '#' if present and convert hex to RGB
+            hex_color = bgcolor.lstrip('#')
+            if len(hex_color) == 6:  # RGB format
+                r = int(hex_color[0:2], 16)
+                g = int(hex_color[2:4], 16)
+                b = int(hex_color[4:6], 16)
+                bgcolor_tuple = (r, g, b, 255)  # Add full alpha
+            elif len(hex_color) == 8:  # RGBA format
+                r = int(hex_color[0:2], 16)
+                g = int(hex_color[2:4], 16)
+                b = int(hex_color[4:6], 16)
+                a = int(hex_color[6:8], 16)
+                bgcolor_tuple = (r, g, b, a)
+
+        output = remove(
+            image,
+            session=session,
+            alpha_matting=alpha_matting,
+            alpha_matting_foreground_threshold=alpha_matting_foreground_threshold,
+            alpha_matting_background_threshold=alpha_matting_background_threshold,
+            alpha_matting_erode_size=alpha_matting_erode_size,
+            only_mask=only_mask,
+            post_process_mask=post_process_mask,
+            bgcolor=bgcolor_tuple
+        )
+
         output_path = f"/tmp/out.png"
         output.save(output_path)
 
