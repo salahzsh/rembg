@@ -2,7 +2,7 @@ build:
     gpu: true
     cuda: "12.4.1"
     python_version: "3.12.4"
-    python_requirements:
+    python_packages:
         - "onnxruntime-gpu==1.22.0"
 
     run:
